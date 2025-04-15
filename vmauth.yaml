@@ -1,0 +1,24 @@
+unauthorized_user:
+  dump_request_on_errors: true
+  url_map:
+    - src_paths:
+        - "/loki/api/v1/query_range.*"
+      url_prefix: "http://loki-wrapper:3100/"
+    - src_paths:
+        - "/select/.+"
+        - "/insert/.+"
+      url_prefix: "http://victorialogs:9428/"
+      src_headers: ["X-Scope-OrgID: grafana_stage"]
+      headers:
+        - "AccountID: 1"
+    - src_paths:
+        - "/select/.+"
+        - "/insert/.+"
+      url_prefix: "http://victorialogs:9428/"
+      src_headers: ["X-Scope-OrgID: grafana_preprod"]
+      headers:
+        - "AccountID: 2"
+    - src_paths:
+        - "/select/.+"
+        - "/insert/.+"
+      url_prefix: "http://victorialogs:9428/"

@@ -1,0 +1,56 @@
+services:
+  # meta service will be ignored by compose
+  .victorialogs:
+    image: docker.io/victoriametrics/victoria-logs:v1.18.0-victorialogs
+    command:
+      - -storageDataPath=/vlogs
+      - -loggerFormat=json
+      - -syslog.listenAddr.tcp=0.0.0.0:8094
+      - -datadog.streamFields=service,hostname,ddsource
+      - -journald.streamFields=_HOSTNAME,_SYSTEMD_UNIT,_PID
+      - -journald.ignoreFields=MESSAGE_ID,INVOCATION_ID,USER_INVOCATION_ID,
+      - -journald.ignoreFields=_BOOT_ID,_MACHINE_ID,_SYSTEMD_INVOCATION_ID,_STREAM_ID,_UID
+      - -retentionPeriod=1y
+    deploy:
+      replicas: 0
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9428/health"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+
+  victorialogs:
+    extends: .victorialogs
+    volumes:
+      - victorialogs:/vlogs
+    deploy:
+      replicas: 1
+    labels:
+      metrics_port: 9428
+
+  loki-wrapper:
+    build: ./loki-wrapper
+    depends_on:
+      - victorialogs
+    expose:
+      - 3100
+    labels:
+      metrics_port: 3100
+
+  vmauth:
+    image: docker.io/victoriametrics/vmauth:v1.115.0-scratch
+    command:
+      - -httpListenAddr=:9428,:8080
+      - -auth.config=/config/vmauth.yaml
+    volumes:
+      - ./vmauth.yaml:/config/vmauth.yaml
+    ports:
+      - 127.0.0.1:8080:8080
+      - 0.0.0.0:9428:9428
+    expose:
+      - 8080
+    labels:
+      metrics_port: 8080
+
+volumes:
+  victorialogs:
